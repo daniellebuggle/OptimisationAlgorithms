@@ -3,11 +3,11 @@ import numpy as np
 from sympy.abc import x
 
 
-def derivative_expr(x, f):
+def derivative_expr(var, func):
     """
     Function to get the derivative of an expression.
-    :param x: Variable with respect to which differentiation is performed.
-    :param f: Mathematical expression to differentiate
+    :param var: Variable with respect to which differentiation is performed.
+    :param func: Mathematical expression to differentiate
     :return: Derivative of the expression
     """
     return sympy.diff(func, var)
