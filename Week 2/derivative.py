@@ -10,12 +10,13 @@ def derivative_expr(x, f):
     :param f: Mathematical expression to differentiate
     :return: Derivative of the expression
     """
-    return sympy.diff(f, x)
+    return sympy.diff(func, var)
 
 
-var_x = sympy.symbols('x', real=True)
-function = var_x ** 4
-dfdx = derivative_expr(var_x, function)
+# (a)(i)
+x= sympy.symbols('x', real=True)
+f = x ** 4
+dfdx = derivative_expr(x, f)
 print(dfdx)
 
 
