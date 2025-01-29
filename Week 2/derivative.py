@@ -75,3 +75,10 @@ plot_comparison(x_values, np.log(calculations), np.log(finite_derivatives), [1, 
                 'Finite Difference', 'x', 'log(y)',
                 'Logarithmic Scale: Comparing Derivative Evaluation to Finite Difference', 'log.png')
 
+#(iii)
+delta = 1.0
+finite_derivatives_1 = finite_difference(f, x, delta, x_values)
+
+plot_comparison(x_values, calculations, finite_derivatives_1, None, None, 'Derivative Evaluations',
+                'Finite Difference', 'x', 'y',
+                'Comparing Derivative Evaluation to Finite Difference', '1.png')
