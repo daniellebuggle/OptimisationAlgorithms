@@ -14,10 +14,9 @@ def derivative_expr(x, f):
 
 
 var_x = sympy.symbols('x', real=True)
-function = x ** 4
+function = var_x ** 4
 dfdx = derivative_expr(var_x, function)
 print(dfdx)
-
 
 
 
