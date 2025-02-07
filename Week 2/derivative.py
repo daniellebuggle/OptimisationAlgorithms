@@ -67,7 +67,7 @@ def plot_comparison(x, y1, y2, xlim_range, ylim_range, y1_label, y2_label, xaxis
     plt.ylabel(yaxis_label)
     plt.title(title)
     plt.legend()
-    plt.savefig(file_name)
+    plt.savefig("images/" + file_name)
 
 
 plot_comparison(x_values, calculations, finite_derivatives, None, None, 'Derivative Evaluations',
@@ -98,4 +98,4 @@ plt.ylabel('Error (Finite Difference - Exact Derivative)')
 plt.title('Effect of Perturbation δ on Finite Difference Accuracy')
 plt.legend()
 plt.grid(True)
-plt.savefig('delta_error_comparison.png')
+plt.savefig('images/delta_error_comparison_p3.png')
