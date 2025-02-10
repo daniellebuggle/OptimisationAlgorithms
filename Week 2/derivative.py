@@ -29,8 +29,8 @@ def evaluate_derivative(var, func, values):
 def finite_difference(func, var, delta, x_values):
     """
     Compute the finite difference estimate of a function.
-    :param func: Mathematical expression to differentiate.
-    :param var: Variable with respect to which differentiation is performed.
+    :param func: Mathematical expression provided.
+    :param var: Variable used within the function.
     :param delta: Value used to calculate the finite difference - step size.
     :param x_values: Values used to evaluate the finite difference.
     :return: The calculated finite difference estimate.
@@ -78,24 +78,22 @@ plot_comparison(x_values, calculations, finite_derivatives, None, None, 'Derivat
 x_values = np.arange(1, 101)
 calculations = evaluate_derivative(x, f, x_values)
 
-# (v) Vary the size of delta and calculate the error for each
 # (iii)
 finite_derivatives = finite_difference(f, x, 0.001, x_values)
 error = finite_derivatives - calculations  # Error between finite difference and exact derivative
-errors_0001 = error  # Calculate the mean error for this delta value
+errors_0001 = error
 
 finite_derivatives = finite_difference(f, x, 1, x_values)
-error = finite_derivatives - calculations  # Error between finite difference and exact derivative
-errors_1 = error # Calculate the mean error for this delta value
+error = finite_derivatives - calculations
+errors_1 = error
 
-# (vi) Plot the errors for different delta values
 plt.figure()
 plt.plot(x_values, errors_0001, label='Error for δ = 0.001', color='b')  # Plot for δ = 0.001
 plt.plot(x_values, errors_1, label='Error for δ = 1', color='r')  # Plot for δ = 1
 
 plt.xlabel('x values')
 plt.ylabel('Error (Finite Difference - Exact Derivative)')
-plt.title('Effect of Perturbation δ on Finite Difference Accuracy')
+plt.title('Comparison of Errors for δ = 0.001 vs. δ = 1')
 plt.legend()
 plt.grid(True)
 plt.savefig('images/delta_error_comparison_p3.png')
