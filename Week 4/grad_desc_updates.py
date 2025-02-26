@@ -1,7 +1,9 @@
 from matplotlib import pyplot as plt
 from derivative import *
 
-
+"""
+Part A
+"""
 def polyak_step_size(f_x, f_star, grad_f_x):
     """
     Calculate Polyak Step Size
@@ -35,7 +37,7 @@ def rmsprop_update(x, grad_x, moving_avg, alpha_0, beta, epsilon=1e-8):
     moving_avg = np.array(moving_avg, dtype=np.float64)
     step_size = alpha_0 / (np.sqrt(moving_avg) + epsilon)
     x_new = x - step_size * grad_x
-    return x_new, moving_avg
+    return x_new, moving_avg, step_size
 
 
 def heavy_ball_step(x, z, grad_x, alpha, beta):
@@ -80,7 +82,7 @@ def adam_step(x, m, v, grad_x, alpha, beta1, beta2, epsilon, t):
     step_size = alpha * (m_hat / (np.sqrt(v_hat) + epsilon))
     x_new = x - step_size
 
-    return x_new, m_new, v_new
+    return x_new, m_new, v_new, step_size
 
 
 def polyak_optimization(func, start, f_star, num_iters):
@@ -94,22 +96,21 @@ def polyak_optimization(func, start, f_star, num_iters):
     :return: Function values at each iteration.
     """
     vars = [x, y]  # Variables used in differentiation
-    x_t, y_t = start  # Initialize variables
+    x_t, y_t = start
     f_values = []
+    step_sizes = []
 
     for t in range(1, num_iters + 1):
-        values = {x: x_t, y: y_t}  # Create dictionary of variable values
-        f_x = func.subs(values).evalf()  # Compute function value
-        grad_f_x = evaluate_derivative(vars, func, values)  # Compute gradient
-        alpha_t = polyak_step_size(f_x, f_star, grad_f_x)  # Compute step size
-
-        # Update parameters
+        values = {x: x_t, y: y_t}
+        f_x = func.subs(values).evalf()
+        grad_f_x = evaluate_derivative(vars, func, values)
+        alpha_t = polyak_step_size(f_x, f_star, grad_f_x)
+        step_sizes.append(alpha_t)
         x_t -= alpha_t * grad_f_x[0]
         y_t -= alpha_t * grad_f_x[1]
+        f_values.append(f_x)
 
-        f_values.append(f_x)  # Store function value
-
-    return f_values
+    return f_values, step_sizes
 
 
 def rmsprop_optimization(func, start, alpha_0, beta, num_iters, epsilon=1e-8):
@@ -127,18 +128,20 @@ def rmsprop_optimization(func, start, alpha_0, beta, num_iters, epsilon=1e-8):
     vars = [x, y]
     x_t = np.array(start, dtype=np.float64)
     f_values = []
-    E_g2 = np.zeros(2)  # Initialize moving average
+    E_g2 = np.zeros(2)
+    step_sizes = []
 
     for _ in range(num_iters):
         values = {x: x_t[0], y: x_t[1]}
         f_x = func.subs(values).evalf()
         grad_f_x = evaluate_derivative(vars, func, values)
 
-        x_t, E_g2 = rmsprop_update(x_t, grad_f_x, E_g2, alpha_0, beta, epsilon)
+        x_t, E_g2, step_size = rmsprop_update(x_t, grad_f_x, E_g2, alpha_0, beta, epsilon)
 
         f_values.append(f_x)
+        step_sizes.append(step_size)
 
-    return f_values
+    return f_values, step_sizes
 
 
 def heavy_ball_optimization(func, start, alpha, beta, num_iters):
@@ -156,6 +159,7 @@ def heavy_ball_optimization(func, start, alpha, beta, num_iters):
     x_t = np.array(start, dtype=np.float64)
     z_t = np.zeros(2)  # Initialize momentum term
     f_values = []
+    step_sizes = []
 
     for _ in range(num_iters):
         values = {x: x_t[0], y: x_t[1]}
@@ -165,8 +169,9 @@ def heavy_ball_optimization(func, start, alpha, beta, num_iters):
         x_t, z_t = heavy_ball_step(x_t, z_t, grad_f_x, alpha, beta)
 
         f_values.append(f_x)
+        step_sizes.append(z_t)
 
-    return f_values
+    return f_values, step_sizes
 
 
 def adam_optimization(func, start, alpha, beta1, beta2, num_iters, epsilon=1e-8):
@@ -187,19 +192,23 @@ def adam_optimization(func, start, alpha, beta1, beta2, num_iters, epsilon=1e-8)
     m_t = np.zeros(2)  # Initialize first moment
     v_t = np.zeros(2)  # Initialize second moment
     f_values = []
+    step_sizes = []
 
     for t in range(1, num_iters + 1):
         values = {x: x_t[0], y: x_t[1]}
         f_x = func.subs(values).evalf()
         grad_f_x = evaluate_derivative(vars, func, values)
 
-        x_t, m_t, v_t = adam_step(x_t, m_t, v_t, grad_f_x, alpha, beta1, beta2, epsilon, t)
+        x_t, m_t, v_t, step_size = adam_step(x_t, m_t, v_t, grad_f_x, alpha, beta1, beta2, epsilon, t)
 
         f_values.append(f_x)
+        step_sizes.append(step_size)
 
-    return f_values
+    return f_values, step_sizes
 
-
+"""
+Part B
+"""
 x, y = sympy.symbols('x y', real=True)
 f_expr = 5 * (x - 9) ** 4 + 6 * (y - 4) ** 2
 f_star = 0
@@ -207,82 +216,92 @@ f_star = 0
 # Define parameter values to test
 alpha_values = [0.00001, 0.0001, 0.01, 0.1, 0.5]
 beta_values = [0.25, 0.9]
+beta2_values = [0.25, 0.999]
 start = (12, 1)
 num_iters = 50
 
-plt.figure(figsize=(10, 6))
-
 for alpha in alpha_values:
-    for beta in beta_values:
-        polyak_values = polyak_optimization(f_expr, start, f_star, num_iters)
-        rmsprop_values = rmsprop_optimization(f_expr, start, alpha, beta, num_iters)
-        heavy_ball_values = heavy_ball_optimization(f_expr, start, alpha, beta, num_iters)
-        adam_values = adam_optimization(f_expr, start, alpha, beta, 0.999, num_iters)
+    fig, axes = plt.subplots(2, 2, figsize=(15, 8))
+    for i, beta in enumerate(beta_values):
+        for j, beta2 in enumerate(beta2_values):
+            ax = axes[i, j]
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
-        plt.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
-        plt.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
-        plt.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
+            polyak_values, polyak_step_sizes = polyak_optimization(f_expr, start, f_star, num_iters)
+            rmsprop_values, rmsprop_step_sizes = rmsprop_optimization(f_expr, start, alpha, beta, num_iters)
+            heavy_ball_values, heavyball_step_sizes = heavy_ball_optimization(f_expr, start, alpha, beta, num_iters)
+            adam_values, adam_step_sizes = adam_optimization(f_expr, start, alpha, beta, beta2, num_iters)
 
-        plt.xlabel("Iteration Number")
-        plt.ylabel("Function Value")
-        plt.title(f"Comparison (alpha={alpha}, beta={beta})")
-        plt.legend()
-        plt.grid()
-        plt.ylim(0, 500)
-        plt.savefig(f"images/partB/func/Comparison of f(x) (alpha={alpha}, beta={beta}).png")
+            # Plot the optimisation results on the current subplot
+            ax.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
+            ax.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
+            ax.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
+            ax.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
+
+            # Set labels and title for each subplot
+            ax.set_xlabel("Iteration Number")
+            ax.set_ylabel("Function Value")
+            ax.set_title(f"alpha={alpha}, beta1={beta}, beta2={beta2}")
+            ax.legend()
+            ax.set_ylim(0, 500)
+            ax.grid()
+
+    fig.suptitle(f"Polynomial Function for alpha={alpha}")
+    plt.tight_layout()
+    plt.savefig(f"images/partB/func/func_values/Comparison_of_{alpha}_beta.png")
 
 f_expr = sympy.Max(x - 9, 0) + 6 * sympy.Abs(y - 4)
-plt.figure(figsize=(10, 6))
 
 for alpha in alpha_values:
-    for beta in beta_values:
-        polyak_values = polyak_optimization(f_expr, start, f_star, num_iters)
-        rmsprop_values = rmsprop_optimization(f_expr, start, alpha, beta, num_iters)
-        heavy_ball_values = heavy_ball_optimization(f_expr, start, alpha, beta, num_iters)
-        adam_values = adam_optimization(f_expr, start, alpha, beta, 0.999, num_iters)
+    fig, axes = plt.subplots(2, 2, figsize=(15, 8))
+    for i, beta in enumerate(beta_values):
+        for j, beta2 in enumerate(beta2_values):
+            ax = axes[i, j]
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
-        plt.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
-        plt.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
-        plt.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
+            polyak_values, polyak_step_sizes = polyak_optimization(f_expr, start, f_star, num_iters)
+            rmsprop_values, rmsprop_step_sizes = rmsprop_optimization(f_expr, start, alpha, beta, num_iters)
+            heavy_ball_values, heavyball_step_sizes = heavy_ball_optimization(f_expr, start, alpha, beta, num_iters)
+            adam_values, adam_step_sizes = adam_optimization(f_expr, start, alpha, beta, beta2, num_iters)
 
-        plt.xlabel("Iteration Number")
-        plt.ylabel("Function Value")
-        plt.title(f"Comparison (alpha={alpha}, beta={beta})")
-        plt.legend()
-        plt.grid()
-        plt.savefig(f"images/partB/ReLu/Comparison of Max (alpha={alpha}, beta={beta}).png")
+            # Plot the optimisation results on the current subplot
+            ax.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
+            ax.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
+            ax.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
+            ax.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
+
+            # Set labels and title for each subplot
+            ax.set_xlabel("Iteration Number")
+            ax.set_ylabel("Function Value")
+            ax.set_title(f"alpha={alpha}, beta1={beta}, beta2={beta2}")
+            ax.legend()
+            ax.grid()
+
+    fig.suptitle(f"ReLu function for alpha={alpha}")
+    plt.tight_layout()
+    plt.savefig(f"images/partB/ReLu/ReLu_Comparison_of_{alpha}_beta.png")
 
 """
 Part C
 """
+f_expr = sympy.Max(x - 9, 0) + 6 * sympy.Abs(y - 4)
+f_star = 0
+num_iters = 50
+start_values = [(-1, 1), (1, 1), (100, 1)]
 
-# Define parameter values to test
-alpha_values = [0.1, 0.5]
-beta_values = [0.25, 0.9]
-start = (100, 1)
-num_iters = 500
+for start in start_values:
+    polyak_values, polyak_step_sizes = polyak_optimization(f_expr, start, f_star, num_iters)
+    rmsprop_values, rmsprop_step_sizes = rmsprop_optimization(f_expr, start, 0.1, 0.9, num_iters)
+    heavy_ball_values, heavyball_step_sizes = heavy_ball_optimization(f_expr, start, 0.01, 0.9, num_iters)
+    adam_values, adam_step_sizes = adam_optimization(f_expr, start, 0.1, 0.9, 0.999, num_iters)
 
-plt.figure(figsize=(10, 6))
-for alpha in alpha_values:
-    for beta in beta_values:
-        polyak_values = polyak_optimization(f_expr, start, f_star, num_iters)
-        rmsprop_values = rmsprop_optimization(f_expr, start, alpha, beta, num_iters)
-        heavy_ball_values = heavy_ball_optimization(f_expr, start, alpha, beta, num_iters)
-        adam_values = adam_optimization(f_expr, start, alpha, beta, 0.999, num_iters)
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
+    plt.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
+    plt.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
+    plt.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(range(1, num_iters + 1), polyak_values, label="Polyak", linestyle="--")
-        plt.plot(range(1, num_iters + 1), rmsprop_values, label="RMSProp", linestyle="-")
-        plt.plot(range(1, num_iters + 1), heavy_ball_values, label="Heavy Ball", linestyle="-.")
-        plt.plot(range(1, num_iters + 1), adam_values, label="Adam", linestyle=":")
-
-        plt.xlabel("Iteration Number")
-        plt.ylabel("Function Value")
-        plt.title(f"Comparison (alpha={alpha}, beta={beta})")
-        plt.legend()
-        plt.grid()
-        plt.savefig(f"Comparison of ReLu x=100 (alpha={alpha}, beta={beta}).png")
+    plt.xlabel("Iteration Number")
+    plt.ylabel("Function Value")
+    plt.title(f"ReLu Function x={start[0]}")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"images/partC/Comparison of ReLu Function x={start[0]}.png")
