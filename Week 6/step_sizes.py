@@ -26,7 +26,7 @@ def rmsprop_step(grad_x, moving_avg, alpha_0, beta, epsilon=1e-8):
     :param alpha_0: Base learning rate
     :param beta: Decay rate
     :param epsilon: Small constant to prevent division by zero
-    :return: Parameter values with step size.
+    :return: Parameter value with step size, and moving average.
     """
     grad_sq = grad_x ** 2
     moving_avg = beta * moving_avg + (1 - beta) * grad_sq
@@ -34,29 +34,27 @@ def rmsprop_step(grad_x, moving_avg, alpha_0, beta, epsilon=1e-8):
     moving_avg = np.array(moving_avg, dtype=np.float64)
     step_size = alpha_0 / (np.sqrt(moving_avg) + epsilon)
 
-    return step_size
+    return step_size, moving_avg
 
 
 def heavy_ball_step(z, grad_x, alpha, beta):
     """
     Computes step size using Heavy Ball method.
 
-    :param x: Current parameter value.
     :param z: Momentum term.
     :param grad_x: Gradient at x.
     :param alpha: Learning rate.
     :param beta: Momentum coefficient (memory)
-    :return: Step size
+    :return: Updated Momentum term
     """
     z_new = beta * z + alpha * grad_x
     return z_new
 
 
-def adam_step(x, m, v, grad_x, alpha, beta1, beta2, epsilon, t):
+def adam_step(m, v, grad_x, alpha, beta1, beta2, epsilon, t):
     """
     Computes step size using Adam algorithm.
 
-    :param x: Current parameter values
     :param m: First momentum term
     :param v: Second momentum term
     :param grad_x: Gradient at x
@@ -77,4 +75,4 @@ def adam_step(x, m, v, grad_x, alpha, beta1, beta2, epsilon, t):
 
     step_size = alpha * (m_hat / (np.sqrt(v_hat) + epsilon))
 
-    return step_size
+    return m_new, v_new, step_size
