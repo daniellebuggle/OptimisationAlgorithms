@@ -1,3 +1,4 @@
+import numpy as np
 from matplotlib import pyplot as plt
 from loss_functions import *
 from step_sizes import *
@@ -92,6 +93,10 @@ def compute_symbolic_derivative(x, minibatch):
     return grad_x1
 
 
+def numerical_derivative(x1_val, x2_val, symbolic_grad):
+    return symbolic_grad.subs({x1: x1_val, x2: x2_val})
+
+
 # Example usage
 np.random.seed(42)
 
@@ -150,8 +155,75 @@ x1_val = 1.0
 x2_val = 2.0
 
 # Evaluate the symbolic derivative at the point (x1_val, x2_val)
-grad_x1_evaluated = grad_x1.subs({x1: x1_val, x2: x2_val})
+grad_x1_evaluated = numerical_derivative(x1_val, x2_val, grad_x1)
 
 # Output the evaluated derivative
 print(f"Symbolic Gradient with respect to x1 at (x1={x1_val}, x2={x2_val}): {grad_x1_evaluated}")
 
+"""
+Part B
+"""
+
+
+def gradient_descent(x0, minibatch, alpha, num_iterations):
+    X = np.array([x0])  # Ensure X is an array, with x0 as the first element
+    symbolic_grad = compute_symbolic_derivative([x1, x2], minibatch)
+
+    x1_value = X[-1][0]
+    x2_value = X[-1][1]
+
+    for i in range(num_iterations):
+        step = alpha * np.array(numerical_derivative(x1_value, x2_value, symbolic_grad))
+        x0 = X[-1] - step
+        X = np.append(X, [x0], axis=0)
+
+        x1_value = x0[0]
+        x2_value = x0[1]
+
+    return X
+
+
+x0 = [3, 3]  # Initial point
+minibatch = generate_trainingdata(m=25)  # Your training data
+alpha = 0.01  # Step size (learning rate)
+num_iterations = 100  # Number of iterations
+
+# Run gradient descent
+X_history = gradient_descent(x0, minibatch, alpha, num_iterations)
+print(X_history)
+
+# Plot the path on the contour plot
+x1_range = np.linspace(-4, 4, 100)
+x2_range = np.linspace(-4, 4, 100)
+x1, x2 = np.meshgrid(x1_range, x2_range)
+
+f_values = np.zeros_like(x1)
+
+for i in range(x1.shape[0]):
+    for j in range(x1.shape[1]):
+        x = np.array([x1[i, j], x2[i, j]])  # Current point (x1, x2)
+        f_values[i, j] = f(x, minibatch)  # Calculate the loss for this point
+
+# Create the contour plot
+plt.figure(figsize=(8, 6))
+
+# Plot the contour of the loss function
+contour = plt.contour(x1, x2, f_values, 20, cmap='viridis')
+plt.title(f'Contour Plot with Gradient Descent Path with alpha={alpha}')
+plt.xlabel('x1')
+plt.ylabel('x2')
+
+# Plot the path of gradient descent (as a line)
+plt.plot(X_history[:, 0], X_history[:, 1], 'ro-', label='Gradient Descent Path')
+
+# Add a colorbar for the contour plot
+plt.colorbar(contour)
+
+# Show the legend
+plt.legend()
+
+# Adjust layout for better display
+plt.tight_layout()
+
+# Display the plot
+plt.savefig(f"images/grad_descent_alpha_{alpha}.png")
