@@ -32,9 +32,9 @@ def approx_gradient(f, x, minibatch, epsilon=1e-5):
 """
 
 
-def mini_batch_SGD(X, num_iters, batch_size, step_size_func, alpha0, beta0, beta1, epsilon):
+def mini_batch_SGD(X, initial_x0, num_iters, batch_size, step_size_func, alpha0, beta0, beta1, epsilon):
     m, n = X.shape  # m = number of training data points, n = number of features
-    theta = np.zeros(n)  # Initialize theta (parameters)
+    theta = np.array(initial_x0)  # # Initialize theta (parameters)
 
     moving_avg = np.zeros_like(theta)  # RMSPROP
     z_t = np.zeros_like(theta)  # Heavy Ball
@@ -42,15 +42,22 @@ def mini_batch_SGD(X, num_iters, batch_size, step_size_func, alpha0, beta0, beta
     v_t = np.zeros_like(theta)  # Adam - Second momentum term
     t = 1  # Adam - time step
 
+    theta_history = [theta.copy()]
+    f_values = [f(theta, X)]
+
+    epoch_count = 0
+
     for iter_num in range(num_iters):
         # Shuffle the training data
         indices = np.random.permutation(m)
         X_shuffled = X[indices]
 
+        epoch_count += 1
         # Loop through mini-batches
         for i in range(0, m, batch_size):
             # Create mini-batch
             minibatch_X = X_shuffled[i:i + batch_size]
+            print(f"minibatch, {epoch_count}, {minibatch_X}")
 
             # Calculate the approximate gradient for the current mini-batch
             grad = approx_gradient(f, theta, minibatch_X)
@@ -67,10 +74,15 @@ def mini_batch_SGD(X, num_iters, batch_size, step_size_func, alpha0, beta0, beta
             elif step_size_func == adam_step:
                 m_t, v_t, alpha = step_size_func(m_t, v_t, grad, beta0, beta1, epsilon, t)
                 t += 1
+            else:
+                alpha = alpha0
 
             theta = theta - alpha * grad  # Update parameters
+            # Append current theta to history
+            theta_history.append(theta.copy())
+            f_values.append(f(theta, X))
 
-    return theta
+    return np.array(theta_history), np.array(f_values), epoch_count
 
 
 def symbolic_f(x, minibatch):
@@ -98,7 +110,7 @@ def numerical_derivative(x1_val, x2_val, symbolic_grad):
 
 
 # Example usage
-np.random.seed(42)
+# np.random.seed(42)
 
 """
 (ii)
@@ -149,7 +161,7 @@ x = [x1, x2]
 
 grad_x1 = compute_symbolic_derivative(x, minibatch)
 
-print(f"Symbolic Gradient with respect to x1: {grad_x1}")
+# print(f"Symbolic Gradient with respect to x1: {grad_x1}")
 
 x1_val = 1.0
 x2_val = 2.0
@@ -158,13 +170,16 @@ x2_val = 2.0
 grad_x1_evaluated = numerical_derivative(x1_val, x2_val, grad_x1)
 
 # Output the evaluated derivative
-print(f"Symbolic Gradient with respect to x1 at (x1={x1_val}, x2={x2_val}): {grad_x1_evaluated}")
+
+# print(f"Symbolic Gradient with respect to x1 at (x1={x1_val}, x2={x2_val}): {grad_x1_evaluated}")
 
 """
 Part B
 """
 
-
+"""
+(i)
+"""
 def gradient_descent(x0, minibatch, alpha, num_iterations):
     X = np.array([x0])  # Ensure X is an array, with x0 as the first element
     symbolic_grad = compute_symbolic_derivative([x1, x2], minibatch)
@@ -190,7 +205,7 @@ num_iterations = 100  # Number of iterations
 
 # Run gradient descent
 X_history = gradient_descent(x0, minibatch, alpha, num_iterations)
-print(X_history)
+# print(X_history)
 
 # Plot the path on the contour plot
 x1_range = np.linspace(-4, 4, 100)
@@ -215,15 +230,79 @@ plt.ylabel('x2')
 
 # Plot the path of gradient descent (as a line)
 plt.plot(X_history[:, 0], X_history[:, 1], 'ro-', label='Gradient Descent Path')
-
-# Add a colorbar for the contour plot
 plt.colorbar(contour)
-
-# Show the legend
 plt.legend()
-
-# Adjust layout for better display
 plt.tight_layout()
-
-# Display the plot
 plt.savefig(f"images/grad_descent_alpha_{alpha}.png")
+
+"""
+(ii)
+"""
+
+X = generate_trainingdata(m=25)  # Your training data
+x0 = [3, 3]
+alpha = 0.01  # Constant step size (learning rate)
+num_iters = 100  # Number of iterations
+batch_size = 5  # Mini-batch size
+
+# Run mini-batch SGD with constant step size
+theta_final, func_values, epochs = mini_batch_SGD(X, x0, num_iters, batch_size, None, alpha, None, None, None)
+
+x1_range = np.linspace(-4, 4, 100)
+x2_range = np.linspace(-4, 4, 100)
+x1, x2 = np.meshgrid(x1_range, x2_range)
+
+f_values = np.zeros_like(x1)
+
+for i in range(x1.shape[0]):
+    for j in range(x1.shape[1]):
+        x = np.array([x1[i, j], x2[i, j]])  # Current point (x1, x2)
+        f_values[i, j] = f(x, X)  # Calculate the loss for this point
+
+# Create the contour plot
+plt.figure(figsize=(8, 6))
+
+# Plot the contour of the loss function
+contour = plt.contour(x1, x2, f_values, 20, cmap='viridis')
+plt.title(f'Contour Plot with Mini-Batch SGD with alpha={alpha}')
+plt.xlabel('x1')
+plt.ylabel('x2')
+
+theta_final = np.array(theta_final)
+# Plot the path of gradient descent (as a line)
+plt.plot(theta_final[:, 0], theta_final[:, 1], 'ro-', label='Mini-Batch SGD Path')
+plt.xlim(-4, 4)
+plt.ylim(-4, 4)
+plt.colorbar(contour)
+plt.legend()
+plt.tight_layout()
+plt.savefig(f"images/mini_batch_sgd_alpha_{alpha}.png")
+
+"""
+Plot epochs vs function value
+"""
+X = generate_trainingdata(m=25)
+x0 = [3, 3]
+alpha = 0.01
+num_iters = 100
+batch_size = 5
+
+num_runs = 5  # Run SGD multiple times
+plt.figure(figsize=(8, 6))
+
+for run in range(num_runs):
+    _, f_values, num_epochs = mini_batch_SGD(X, x0, num_iters, batch_size, None, alpha, None, None, None)
+    f_values_per_epoch = f_values[batch_size - 1::batch_size]  # Every batch_size-th value corresponds to an epoch
+
+    # Plot function values at each epoch
+    plt.plot(range(1, num_epochs + 1), f_values_per_epoch, label=f'Run {run + 1}')
+    print(f'Run {run + 1}, Epochs: {num_epochs}')
+
+plt.yscale('log')
+plt.xlabel('Epochs')
+plt.ylabel('Function Value f(θ)')
+plt.title('Function Value vs. Epochs for Mini-Batch SGD')
+plt.legend()
+plt.grid()
+plt.savefig(f"images/runs_epoch_vs_function_{alpha}.png")
+
